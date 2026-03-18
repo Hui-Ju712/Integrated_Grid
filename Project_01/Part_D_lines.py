@@ -1,8 +1,14 @@
+from pyexpat import model
+
 import pandas as pd
 import pypsa
 import matplotlib.pyplot as plt
+from pathlib import Path
 #impoert network 
-network = pypsa.Network("sweden_base_model.nc")
+
+FILE_DIR = Path(__file__).parent
+model_dir = FILE_DIR / 'sweden_base_model.nc'
+network = pypsa.Network(model_dir)
 
 network.add("Bus", 'Norway', v_nom=400)
 network.add("Bus", 'Finland', v_nom=400)
