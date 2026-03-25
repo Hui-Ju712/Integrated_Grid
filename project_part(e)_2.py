@@ -29,7 +29,8 @@ print(B)
 #--Calculating Laplacian
 L_ij=K_il@B@K_il.T
 
-#--Reducing order of laplacian and inverting
+#--Reducing order of Laplacian and inverting (tried both pinv and reduced order)
+
 #L_ij_red= L_ij[1:, 1:]
 #L_ji_red=np.linalg.inv(L_ij_red)
 
