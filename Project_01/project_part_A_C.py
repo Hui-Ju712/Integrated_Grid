@@ -141,9 +141,6 @@ network.add("Generator",
             capital_cost = capital_cost_OCGT,
             marginal_cost = marginal_cost_OCGT)
 
-#Save the network to a NetCDF file
-network.export_to_netcdf("sweden_base_model.nc")
-
 
 # %%
 network.generators_t.p_max_pu
@@ -462,6 +459,9 @@ network
 
 network.optimize(solver_name="gurobi") # Solve the optimization problem with the new storage unit
 # add this if doesnt work , assign_all_duals=False
+
+#Save the network to a NetCDF file
+network.export_to_netcdf("sweden_storage_model.nc")
 
 
 labels = ['onshore wind',

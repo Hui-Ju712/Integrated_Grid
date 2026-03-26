@@ -4,9 +4,9 @@ import pandas as pd
 import pypsa
 import matplotlib.pyplot as plt
 from pathlib import Path
-#impoert network 
+#impoert network, swedan case consider storage unit 
 FILE_DIR = Path(__file__).parent
-model_dir = FILE_DIR / 'sweden_base_model.nc'
+model_dir = FILE_DIR / 'sweden_storage_model.nc' 
 Load_dir= FILE_DIR / 'data/electricity_demand.csv'
 CF_onshore_dir = FILE_DIR / 'data/CF_onshore_wind_1979-2017.csv'
 CF_offshore_dir = FILE_DIR / 'data/CF_offshore_wind_1979-2017.csv'
@@ -187,8 +187,12 @@ network.optimize(solver_name='gurobi')
 print(f'Total Annualized System Cost: {network.objective/1000000:.2f} m€')
 print('========================================')
 print(f'Optimal capacity for generators: {network.generators.p_nom_opt} MW')
+batt_power_mw = network.storage_units.at["SE storage", "p_nom_opt"]
+batt_max_hours = network.storage_units.at["SE storage", "max_hours"]
+total_energy_capacity = batt_power_mw * batt_max_hours
+print(f'Total storage energy capacity: {total_energy_capacity:.2f} MWh')
 
-#%%===Plotting=====
+#%%===Plotting time series distribution =====
 time_index = network.loads_t.p.index[0:96]
 
 onshore=network.generators_t.p['onshorewind'][0:96]
@@ -199,7 +203,8 @@ gas=network.generators_t.p['OCGT'][0:96]
 norway = network.lines_t.p1['Sweden - Norway'][0:96].clip(lower=0) #export from Swedan turn into zero
 finland = network.lines_t.p1['Sweden - Finland'][0:96].clip(lower=0)
 denmark = network.lines_t.p1['Sweden - Denmark'][0:96].clip(lower=0)
-
+storage=network.storage_units_t.p['SE storage'][0:96].clip(lower=0) #only consider discharge from storage
+storage_charge = network.storage_units_t.p['SE storage'][0:96].clip(upper=0) #consider charge from storage, turn into positive value
 # export_no = network.lines_t.p1['Sweden - Norway'][0:96].clip(upper=0)
 # export_fi = network.lines_t.p1['Sweden - Finland'][0:96].clip(upper=0)
 # export_dk = network.lines_t.p1['Sweden - Denmark'][0:96].clip(upper=0)
@@ -207,19 +212,21 @@ denmark = network.lines_t.p1['Sweden - Denmark'][0:96].clip(lower=0)
 # export_labels = ['Export to Norway', 'Export to Finland', 'Export to Denmark']
 # export_colors = ["#A8D0CB", "#D4B9CD", "#F0A3A4"] 
 
-source=[onshore, solar, gas, norway, finland, denmark]
-labels = ['Onshore Wind', 'Solar', 'Gas (OCGT)', 'Import Norway', 'Import Finland', 'Import Denmark']
+source=[onshore, solar, gas, norway, finland, denmark, storage]
+labels = ['Onshore Wind', 'Solar', 'Gas (OCGT)', 'Import Norway', 'Import Finland', 'Import Denmark', 'Storage']
 colors = [
     "#4E79A7",  # blue
     "#F28E2B",  # orange
     "#59A14F",  # green
     "#E15759",  # red
     "#B07AA1",  # purple
-    "#76B7B2"   # teal
+    "#76B7B2",   # teal
+    "#EDC948"   # mustard yellow
 ]
 
 plt.figure(figsize=(12, 6))
 plt.stackplot(time_index, source, labels=labels, colors=colors)
+plt.stackplot(time_index, storage_charge, labels=['Charge'], colors=['#FF9DA7'])
 #plt.stackplot(time_index, export_source, labels=export_labels, colors=export_colors)
 plt.plot(time_index, network.loads_t.p['load'][0:96], 
          color='black', linewidth=2.5, linestyle='--', label='Demand (Sweden)')
@@ -231,18 +238,19 @@ plt.tight_layout()
 plt.savefig(FILE_DIR /'graph/sweden_generation_stackplot.png', dpi=300, bbox_inches='tight')
 plt.show()
 
-#===Plot energy mix pie chart===
+#%%===Plot energy mix pie chart===
 import_no_total = network.lines_t.p1['Sweden - Norway'].clip(lower=0).sum()
 import_fi_total = network.lines_t.p1['Sweden - Finland'].clip(lower=0).sum()
 import_dk_total = network.lines_t.p1['Sweden - Denmark'].clip(lower=0).sum()
 
-labels_pie_sweden = [
+labels = [
     'Domestic Onshore Wind',
     'Domestic Solar',  
     'Domestic Gas (OCGT)',
     'Import from Norway',
     'Import from Finland',
-    'Import from Denmark'
+    'Import from Denmark',
+    'Storage'
 ]
 sizes = [
     network.generators_t.p['onshorewind'].sum(),
@@ -250,7 +258,8 @@ sizes = [
     network.generators_t.p['OCGT'].sum(),
     import_no_total,
     import_fi_total,
-    import_dk_total
+    import_dk_total,
+    network.storage_units_t.p['SE storage'].clip(lower=0).sum()
 ]
 
 colors = [
@@ -259,7 +268,8 @@ colors = [
     "#59A14F",  # green
     "#E15759",  # red
     "#B07AA1",  # purple
-    "#76B7B2"   # teal
+    "#76B7B2",   # teal
+    "#EDC948"   # mustard yellow
 ]
 
 def my_autopct(pct):
