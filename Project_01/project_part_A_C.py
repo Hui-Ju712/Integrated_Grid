@@ -1,10 +1,9 @@
 # %%
 #conda install pandas=2.2
-
 #%%
 import pandas as pd
 import pypsa
-
+from pathlib import Path
 # %%
 network = pypsa.Network()
 hours_in_2015 = pd.date_range('2015-01-01 00:00Z',
@@ -14,13 +13,19 @@ hours_in_2015 = pd.date_range('2015-01-01 00:00Z',
 network.set_snapshots(hours_in_2015.values)
 
 network.add("Bus",
-            "electricity bus")
+            "electricity bus",v_nom=400)
 
 network.snapshots
 
 # %%
 # load electricity demand data
-df_elec = pd.read_csv('data/electricity_demand.csv', sep=';', index_col=0) # in MWh
+FILE_DIR = Path(__file__).parent
+model_dir = FILE_DIR / 'sweden_storage_model.nc' 
+Load_dir= FILE_DIR / 'data/electricity_demand.csv'
+CF_onshore_dir = FILE_DIR / 'data/CF_onshore_wind_1979-2017.csv'
+CF_offshore_dir = FILE_DIR / 'data/CF_offshore_wind_1979-2017.csv'
+CF_pv_dir = FILE_DIR / 'data/CF_pv_optimal.csv'
+df_elec = pd.read_csv(Load_dir, sep=';', index_col=0) # in MWh
 df_elec.index = pd.to_datetime(df_elec.index) #change index to datatime
 country='SWE'
 print(df_elec[country].head())
@@ -34,7 +39,8 @@ print(df_elec[country].head())
 network.add("Load",
             "load",
             bus="electricity bus",
-            p_set=df_elec[country].values)
+            p_set=df_elec[country].values,
+            v_nom=400)
 
 # %%
 network.loads_t.p_set 
@@ -60,7 +66,7 @@ network.add("Carrier", "gas", co2_emissions=0.19) # in t_CO2/MWh_th
 country = 'SWE'
 
 # add onshore wind generator
-df_onshorewind = pd.read_csv('data/CF_onshore_wind_1979-2017.csv', sep=';', index_col=0)
+df_onshorewind = pd.read_csv(CF_onshore_dir, sep=';', index_col=0)
 df_onshorewind.index = pd.to_datetime(df_onshorewind.index)
 CF_wind = df_onshorewind[country][[hour.strftime("%Y-%m-%dT%H:%M:%SZ") for hour in network.snapshots]]
 capital_cost_onshorewind = annuity(30,0.07)*910000*(1+0.033) # in €/MW
@@ -76,7 +82,7 @@ network.add("Generator",
 
 
 # add offshore wind generator
-df_offshorewind = pd.read_csv('data/CF_offshore_wind_1979-2017.csv', sep=';', index_col=0)
+df_offshorewind = pd.read_csv(CF_offshore_dir, sep=';', index_col=0)
 df_offshorewind.index = pd.to_datetime(df_offshorewind.index)
 CF_offwind = df_offshorewind[country][[hour.strftime("%Y-%m-%dT%H:%M:%SZ") for hour in network.snapshots]]
 '''
@@ -95,7 +101,7 @@ network.add("Generator",
 
 
 # add solar PV generator
-df_solar = pd.read_csv('data/CF_pv_optimal.csv', sep=';', index_col=0)
+df_solar = pd.read_csv(CF_pv_dir, sep=';', index_col=0)
 df_solar.index = pd.to_datetime(df_solar.index)
 CF_solar = df_solar[country][[hour.strftime("%Y-%m-%dT%H:%M:%SZ") for hour in network.snapshots]]
 capital_cost_solar = annuity(25,0.07)*425000*(1+0.03) # in €/MW
@@ -181,6 +187,7 @@ plt.plot(network.generators_t.p['OCGT'][0:96], color='brown', label='gas (OCGT)'
 plt.xlabel('Time (Day/hours)')
 plt.ylabel('Power (MWh)')
 plt.legend(fancybox=True, shadow=True, loc='best')
+plt.savefig(FILE_DIR / "graph/sweden_base_time_series.png", dpi=300, bbox_inches='tight')
 plt.tight_layout()
 
 # %%
@@ -211,6 +218,8 @@ patches, texts, autotexts = plt.pie(
 plt.axis('equal')
 plt.title('Electricity mix', y=1.07)
 plt.legend(patches, labels, loc="center left", bbox_to_anchor=(1, 0.5))
+plt.savefig(FILE_DIR / "graph/sweden_base_energy_mix.png", dpi=300, bbox_inches='tight')
+plt.show()
 
 # %%
 '''This is part 2 of the project, we can fix problem later'''
@@ -256,9 +265,7 @@ plt.legend(patches, labels, loc="center left", bbox_to_anchor=(1, 0.5))
 
 
 # %% [markdown]
-# ## Part A
-# 
-# choose a different country/region/city/system and calculate the optimal capacities for renewable and non-renewable generators. You can add as many technologies as you want. Remember to provide a reference for the cost assumptions. Plot the dispatch time series for a week in summer and winter. Plot the annual electricity mix. Use the duration curves or the capacity factor to investigate the contribution of different technologies.
+# Part A
 
 # %%
 # Winter week and summer week 
@@ -293,6 +300,8 @@ plot_dispatch_week(network,
                    "2015-07-03 00:00:00",
                    "2015-07-09 23:00:00",
                    "Dispatch - Summer week")
+plt.savefig(FILE_DIR / "graph/sweden_base_winter_and_summer.png", dpi=300, bbox_inches='tight')
+plt.show()
 
 # %%
 # Annual energy mix 
@@ -321,7 +330,9 @@ patches, texts, autotexts = plt.pie(sizes,
 plt.axis("equal")
 plt.title("Annual electricity mix")
 plt.legend(patches, labels, loc="center left", bbox_to_anchor=(1, 0.5))
+plt.savefig(FILE_DIR / "graph/sweden_base_annual_energy_mix.png", dpi=300, bbox_inches='tight')
 plt.show()
+
 
 # %%
 # Duration curves
@@ -336,11 +347,11 @@ plt.ylabel("Dispatch [MW]")
 plt.title("Duration curves by technology")
 plt.legend()
 plt.tight_layout()
+plt.savefig(FILE_DIR / "graph/sweden_base_duration_curves.png", dpi=300, bbox_inches='tight')
 plt.show()
 
 # %% [markdown]
 # ## Part B
-# 
 # Investigate how sensitive your results are to the interannual variability of solar and wind generation. Plot the average capacity and variability obtained for every generator using different weather years.
 
 # %%
@@ -454,9 +465,6 @@ network.add(
    cyclic_state_of_charge=True,
 )
 
-network
-
-
 network.optimize(solver_name="gurobi") # Solve the optimization problem with the new storage unit
 # add this if doesnt work , assign_all_duals=False
 
@@ -480,9 +488,6 @@ sizes = [network.generators_t.p['onshorewind'].sum(),
 
 colors = ['blue', 'green', 'orange', 'purple', 'brown', 'red']
 
-def my_autopct(pct):
-    return f'{pct:.1f}%' if pct > 0 else ''
-
 patches, texts, autotexts = plt.pie(
     sizes,
     colors=colors,
@@ -494,7 +499,8 @@ patches, texts, autotexts = plt.pie(
 plt.axis('equal')
 plt.title('Electricity mix', y=1.07)
 plt.legend(patches, labels, loc="center left", bbox_to_anchor=(1, 0.5))
-
+plt.savefig(FILE_DIR / "graph/sweden_storage_energy_mix.png", dpi=300, bbox_inches='tight')
+plt.show()
 # Print the capital costs for each technology
 print("",capital_cost_OCGT, "OCGT")
 print(capital_cost_nuclear, "Nuclear")

@@ -4,6 +4,7 @@ import pandas as pd
 import pypsa
 import matplotlib.pyplot as plt
 from pathlib import Path
+import numpy as np
 #impoert network, swedan case consider storage unit 
 FILE_DIR = Path(__file__).parent
 model_dir = FILE_DIR / 'sweden_storage_model.nc' 
@@ -289,4 +290,52 @@ plt.title('Electricity mix', y=1.07)
 plt.legend(patches, labels, loc="center left", bbox_to_anchor=(1, 0.5))
 plt.savefig(FILE_DIR / "graph/sweden_energymix_import.png", dpi=300, bbox_inches='tight')
 plt.show()
-# %%
+# %% ====get actual flow result from pypsa====
+t = network.snapshots[0]
+injections = []
+countries = ['electricity bus', 'Norway', 'Finland', 'Denmark']
+for country in countries:
+    gen_total = network.generators_t.p.loc[t, network.generators.bus == country].sum()
+    load_total = network.loads_t.p.loc[t, network.loads.bus == country].sum()
+    if country == 'electricity bus':
+        storage_total = network.storage_units_t.p.loc[t, 'SE storage']
+    else:
+        storage_total = 0 
+        
+    net_inject = gen_total - load_total + storage_total
+    injections.append(net_inject)
+
+#transform into column vector
+injections_array = np.array(injections).reshape(-1, 1)
+
+lines_order = ['Sweden - Norway', 'Sweden - Finland', 'Sweden - Denmark', 'Norway - Denmark'] # 確保順序與 K 矩陣的 Row 一致！
+pypsa_flows = network.lines_t.p0.loc[t, lines_order].values
+print("Power flow on each line from PyPSA:\n", np.round(pypsa_flows, 2))
+
+# %% ===PTDF calculation ===
+K=np.array([
+    [1,1,1,0],
+    [-1,0,0,1],
+    [0,-1,0,0],
+    [0,0,-1,-1]
+]
+)
+L=K@K.T
+print("Laplacian matrix L:\n", L)
+
+x=0.1
+Lengths=np.array([530,450,160,480])
+X_line=0.1*Lengths
+B=np.diag(1/X_line) 
+print("Susceptance matrix B:\n", B)
+
+L_weighted = K @ B @ K.T
+L_inv = np.linalg.pinv(L_weighted)
+print("Inverse of weighted Laplacian:\n", L_inv)
+PTDF = B @ K.T @ L_inv
+print("=== PTDF ===")
+print(np.round(PTDF, 4))
+
+calculated_flows = PTDF @ injections_array
+print("Calculated power flow on each line:\n", np.round(calculated_flows.flatten(), 2))
+#%%
