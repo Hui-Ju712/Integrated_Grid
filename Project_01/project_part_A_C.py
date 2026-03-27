@@ -295,13 +295,10 @@ plot_dispatch_week(network,
                    "2015-01-02 00:00:00",
                    "2015-01-08 23:00:00",
                    "Dispatch - Winter week")
-
 plot_dispatch_week(network,
                    "2015-07-03 00:00:00",
                    "2015-07-09 23:00:00",
                    "Dispatch - Summer week")
-plt.savefig(FILE_DIR / "graph/sweden_base_winter_and_summer.png", dpi=300, bbox_inches='tight')
-plt.show()
 
 # %%
 # Annual energy mix 
