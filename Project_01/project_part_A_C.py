@@ -370,7 +370,6 @@ plt.show()
 # Investigate how sensitive your results are to the interannual variability of solar and wind generation.
 # Plot the average capacity and variability obtained for every generator using different weather years.
 
-# %%
 weather_years = range(2000, 2018)
 results = []
 
@@ -477,6 +476,23 @@ for year in weather_years:
 
 df_sensitivity = pd.DataFrame(results).set_index("year")
 print(df_sensitivity)
+
+summary = pd.DataFrame({
+    "mean": df_sensitivity.mean(),
+    "std": df_sensitivity.std(),
+    "relative_variability_%": df_sensitivity.std() / df_sensitivity.mean() * 100
+})
+
+print(summary)
+
+summary["mean"].plot(kind="bar", yerr=summary["std"], capsize=5)
+
+
+plt.scatter(df_sensitivity["onshorewind"], df_sensitivity["solar"])
+plt.xlabel("Wind capacity")
+plt.ylabel("Solar capacity")
+plt.title("Wind–Solar trade-off")
+plt.show()
 
 # %% ====Part C=====
 network
