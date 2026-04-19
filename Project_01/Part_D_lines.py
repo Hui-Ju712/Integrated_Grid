@@ -184,6 +184,9 @@ network.add("Generator",
 network.sanitize()
 network.optimize(solver_name='gurobi')
 
+#===Save the network to a NetCDF file===
+network.export_to_netcdf("sweden_network_model.nc")
+
 #====print results====
 print(f'Total Annualized System Cost: {network.objective/1000000:.2f} m€')
 print('========================================')
