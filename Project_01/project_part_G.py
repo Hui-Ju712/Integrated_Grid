@@ -75,13 +75,26 @@ network.add("Link",
 
 
 #add gas links between countries
+lengths = {
+    "SE_NO": 530, #km
+    "SE_FI": 450,
+    "SE_DK": 160,
+    "NO_DK": 480
+}
+'''From https://github.com/PyPSA/technology-data/blob/v0.11.0/outputs/costs_2030.csv, 
+CH4 (g) pipeline FOM 1.5 %/yr
+investment 87.22 EUR/MW/km
+lifetime 50 yr'''
+
+capital_cost_unit = (annuity(50,0.07)+0.015)*87.22  # in €/MW/km, including FOM and investment cost
+
 network.add("Link",
             "Gas_Sweden_Norway",
             bus0="Gas_Sweden",
             bus1="Gas_Norway",
             p_nom_extendable=True,
             p_min_pu=-1, #to make link is reversible
-            capital_cost=15000,  # in €/MW
+            capital_cost=capital_cost_unit * lengths["SE_NO"],  # in €/MW
 )
 network.add("Link",
             "Gas_Sweden_Finland",
@@ -89,7 +102,7 @@ network.add("Link",
             bus1="Gas_Finland",
             p_nom_extendable=True,
             p_min_pu=-1, #to make link is reversible
-            capital_cost=15000,  # in €/MW
+            capital_cost=capital_cost_unit * lengths["SE_FI"],  # in €/MW
 )        
 network.add("Link",
             "Gas_Sweden_Denmark",
@@ -97,7 +110,7 @@ network.add("Link",
             bus1="Gas_Denmark",
             p_nom_extendable=True,
             p_min_pu=-1, #to make link is reversible
-            capital_cost=15000,  # in €/MW
+            capital_cost=capital_cost_unit * lengths["SE_DK"],  # in €/MW
 )    
 network.add("Link",
             "Gas_Norway_Denmark",
@@ -105,7 +118,7 @@ network.add("Link",
             bus1="Gas_Denmark",
             p_min_pu=-1, #to make link is reversible
             p_nom_extendable=True,
-            capital_cost=15000,  # in €/MW
+            capital_cost=capital_cost_unit * lengths["NO_DK"],  # in €/MW
 )    
 
 #====run model=====
