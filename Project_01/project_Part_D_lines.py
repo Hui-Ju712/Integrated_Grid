@@ -199,41 +199,48 @@ print(f'Total storage energy capacity: {total_energy_capacity:.2f} MWh')
 #%%===Plotting time series distribution =====
 time_index = network.loads_t.p.index[0:96]
 
+#source side
 onshore=network.generators_t.p['onshorewind'][0:96]
-#offshore=network.generators_t.p['offshorewind'][0:96]
 solar=network.generators_t.p['solar'][0:96]
-#nuclear=network.generators_t.p['nuclear'][0:96]
 gas=network.generators_t.p['OCGT'][0:96]
 norway = network.lines_t.p1['Sweden - Norway'][0:96].clip(lower=0) #export from Swedan turn into zero
 finland = network.lines_t.p1['Sweden - Finland'][0:96].clip(lower=0)
 denmark = network.lines_t.p1['Sweden - Denmark'][0:96].clip(lower=0)
-storage=network.storage_units_t.p['SE storage'][0:96].clip(lower=0) #only consider discharge from storage
-storage_charge = network.storage_units_t.p['SE storage'][0:96].clip(upper=0) #consider charge from storage, turn into positive value
-# export_no = network.lines_t.p1['Sweden - Norway'][0:96].clip(upper=0)
-# export_fi = network.lines_t.p1['Sweden - Finland'][0:96].clip(upper=0)
-# export_dk = network.lines_t.p1['Sweden - Denmark'][0:96].clip(upper=0)
-# export_source = [export_no, export_fi, export_dk]
-# export_labels = ['Export to Norway', 'Export to Finland', 'Export to Denmark']
-# export_colors = ["#A8D0CB", "#D4B9CD", "#F0A3A4"] 
+import_electricity = norway + finland + denmark
+storage_discharge=network.storage_units_t.p['SE storage'][0:96].clip(lower=0) #only consider discharge from storage
 
-source=[onshore, solar, gas, norway, finland, denmark, storage]
-labels = ['Onshore Wind', 'Solar', 'Gas (OCGT)', 'Import Norway', 'Import Finland', 'Import Denmark', 'Storage']
+source=[onshore, solar, gas, import_electricity, storage_discharge]
+labels = ['Onshore Wind', 'Solar', 'Gas (OCGT)', 'Import Electricity', 'Storage_Discharge']
 colors = [
     "#4E79A7",  # blue
     "#F28E2B",  # orange
     "#59A14F",  # green
-    "#E15759",  # red
     "#B07AA1",  # purple
-    "#76B7B2",   # teal
-    "#EDC948"   # mustard yellow
+    "#EDC948",   # mustard yellow
+   # "#E15759",  # red
+   # "#76B7B2",   # teal
 ]
+#demand side
+storage_charge = -network.storage_units_t.p['SE storage'][0:96].clip(upper=0) #consider charge from storage, turn into positive value
+norway_ex = network.lines_t.p0['Sweden - Norway'][0:96].clip(lower=0) 
+finland_ex = network.lines_t.p0['Sweden - Finland'][0:96].clip(lower=0)
+denmark_ex = network.lines_t.p0['Sweden - Denmark'][0:96].clip(lower=0)
+export_electricity=norway_ex + finland_ex + denmark_ex
+curve_demand = network.loads_t.p['load'][0:96]
+curve_demand_plus_export = curve_demand + export_electricity
+curve_total_sink = curve_demand_plus_export + storage_charge
 
 plt.figure(figsize=(12, 6))
 plt.stackplot(time_index, source, labels=labels, colors=colors)
-plt.stackplot(time_index, storage_charge, labels=['Charge'], colors=['#FF9DA7'])
-#plt.stackplot(time_index, export_source, labels=export_labels, colors=export_colors)
-plt.plot(time_index, network.loads_t.p['load'][0:96], 
-         color='black', linewidth=2.5, linestyle='--', label='Demand (Sweden)')
+plt.plot(time_index, curve_demand, 
+         color='black', linewidth=2.5, linestyle='--', zorder=5, 
+         label='Demand (Sweden)')
+
+plt.plot(time_index, curve_total_sink, 
+         color='#8B0000', linewidth=2.5, linestyle='--', zorder=5, 
+         label='Demand + Export + Charge')
+
+
 plt.xlabel('Time (Day/hours)')
 plt.ylabel('Power (MWh)')
 plt.title('Generation and Import Profiles (First 4 days of January)')
@@ -254,7 +261,7 @@ labels = [
     'Import from Norway',
     'Import from Finland',
     'Import from Denmark',
-    'Storage'
+    'Storage Discharge'
 ]
 sizes = [
     network.generators_t.p['onshorewind'].sum(),
@@ -289,12 +296,12 @@ patches, texts, autotexts = plt.pie(
 )
 
 plt.axis('equal')
-plt.title('Electricity mix', y=1.07)
+#plt.title('Electricity mix', y=1.07)
 plt.legend(patches, labels, loc="center left", bbox_to_anchor=(1, 0.5))
 plt.savefig(FILE_DIR / "graph/sweden_energymix_import.png", dpi=300, bbox_inches='tight')
 plt.show()
 # %% ====get actual flow result from pypsa====
-t = network.snapshots[0]
+t = network.snapshots[10]
 injections = []
 countries = ['electricity bus', 'Norway', 'Finland', 'Denmark']
 for country in countries:
@@ -342,3 +349,23 @@ print(np.round(PTDF, 4))
 calculated_flows = PTDF @ injections_array
 print("Calculated power flow on each line:\n", np.round(calculated_flows.flatten(), 2))
 #%%
+# 1. 提取每小時實際流量 
+actual_flow_Nor = network.lines_t.p0['Sweden - Norway']
+actual_flow_Fin= network.lines_t.p0['Sweden - Finland']
+actual_flow_DK = network.lines_t.p0['Sweden - Denmark']
+
+plt.figure(figsize=(10, 4))
+plt.plot(actual_flow_Nor[:96], label='Actual Power Flow (Sweden - Norway)', color='blue')
+plt.plot(actual_flow_Fin[:96], label='Actual Power Flow (Sweden - Finland)', color='green')
+plt.plot(actual_flow_DK[:96], label='Actual Power Flow (Sweden - Denmark)', color='orange')
+plt.axhline(y=0, color='gray', linestyle='--')
+plt.axhline(y=2300, color='green', linestyle='--', label='Capacity (Sweden - Finland)')
+plt.axhline(y=-2415, color='orange', linestyle='--', label='Capacity (Sweden - Denmark)')
+plt.title(f"Congestion Analysis")
+plt.ylabel("Power Flow (MW)")
+plt.xlabel("Time (Hours)")
+plt.legend()
+plt.tight_layout()
+plt.savefig(FILE_DIR / "graph/sweden_import_congestion.png", dpi=300, bbox_inches='tight')
+plt.show()
+# %%
