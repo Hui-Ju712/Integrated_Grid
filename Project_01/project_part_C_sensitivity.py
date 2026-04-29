@@ -6,7 +6,7 @@ from project_part_C import FILE_DIR, costs, capital_cost_storage
 REDUCTIONS  = [0.00, 0.25, 0.50, 0.75, 0.80, 0.85, 0.90]
 TECHS       = ['onshorewind', 'offshorewind', 'solar', 'nuclear', 'OCGT', 'SE storage']
 LABELS      = ['Onshore Wind', 'Offshore Wind', 'Solar', 'Nuclear', 'Gas (OCGT)', 'Battery Storage']
-COLORS      = ['blue', 'green', 'orange', 'purple', 'brown', 'red']
+COLORS      = ['blue', 'green', 'orange', 'purple', 'brown', 'green']
 
 def run_scenario(reduction):
     net = pypsa.Network(FILE_DIR / 'sweden_base_model.nc')
