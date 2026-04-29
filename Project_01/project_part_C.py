@@ -134,7 +134,7 @@ color_map = {
     "offshorewind": "#87CEEB",   # light blue
     "solar": "#FF8C00",      # orange
     "nuclear": "#800080",    # purple
-    "gas": "#A52A2A",        # maroon
+    "gas": "#A52A2A",        # brown
     "battery storage": "#228B22",    # green
 }
 colors = [color_map.get(carrier, "#999999") for carrier in all_caps.index]
