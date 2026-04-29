@@ -161,5 +161,31 @@ plt.xlabel("Links", fontsize=12)
 plt.xticks(rotation=45, ha='right')
 plt.grid(axis='y', linestyle='--', alpha=0.7)
 plt.tight_layout()
+plt.savefig(FILE_DIR / "graph/gas_flows.png", dpi=300, bbox_inches='tight')
 plt.show()
 # %%
+# MW_th
+gas_capacity_SWE = network.links.at["OCGT_Sweden", "p_nom_opt"]
+gas_capacity_DKK= network.links.at["OCGT_Denmark", "p_nom_opt"]
+gas_capacity_FIN= network.links.at["OCGT_Finland", "p_nom_opt"]
+
+ocgt_efficiency = network.links.at["OCGT_Sweden", "efficiency"]
+
+elec_output_capacity_SWE = gas_capacity_SWE * ocgt_efficiency
+elec_output_capacity_DKK = gas_capacity_DKK * ocgt_efficiency
+elec_output_capacity_FIN = gas_capacity_FIN * ocgt_efficiency
+
+print(f"Sweden OCGT gas capacity: {gas_capacity_SWE:.2f} MW_th")
+print(f"Denmark OCGT gas capacity: {gas_capacity_DKK:.2f} MW_th")
+print(f"Finland OCGT gas capacity: {gas_capacity_FIN:.2f} MW_th")
+print(f"Sweden OCGT electric output capacity: {elec_output_capacity_SWE:.2f} MW_el")
+print(f"Denmark OCGT electric output capacity: {elec_output_capacity_DKK:.2f} MW_el")
+print(f"Finland OCGT electric output capacity: {elec_output_capacity_FIN:.2f} MW_el")
+
+#%%
+nuclear_total_gen = network.generators_t.p["nuclear"].sum()
+nuclear_capacity = network.generators.at["nuclear", "p_nom_opt"]
+
+cf_nuclear = nuclear_total_gen / (nuclear_capacity * 8760)
+
+print(f"CF of nuclear in sweden: {cf_nuclear:.2%}")
