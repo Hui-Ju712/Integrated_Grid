@@ -125,45 +125,18 @@ network.add("Link",
 network.optimize(solver_name='gurobi')
 
 #===Save the network to a NetCDF file===
-network.export_to_netcdf("sweden_gas_model.nc")
+network.export_to_netcdf(FILE_DIR /"sweden_gas_model.nc")
 
 #%%====print results====
 print(f'Total Annualized System Cost: {network.objective/1000000:.2f} m€')
 df_gen_capacity = network.generators.p_nom_opt.to_frame(name="capacity (MW_el or MW_th)")
 print(df_gen_capacity.round(2))
+batt_power_mw = network.storage_units.at["SE storage", "p_nom_opt"]
+batt_max_hours = network.storage_units.at["SE storage", "max_hours"]
+total_energy_capacity = batt_power_mw * batt_max_hours
+print(f'Total storage energy capacity: {total_energy_capacity:.2f} MWh')
 
-#electricity line dispatch (positive means flow from bus0 to bus1, negative means flow from bus1 to bus0)
-df_line_flows = network.lines_t.p0
-print("Sweden - Norway line flows (first 5 hours):")
-print(df_line_flows["Sweden - Norway"].head())
-
-#the total gas flow
-df_flow = network.links_t.p0.sum()
-df_flow_table = df_flow.to_frame(name="Total flow (MWh)")
-print(df_flow_table)
-# %%===plot the gas flow between countries===
-plt.figure(figsize=(10, 6))
-
-# positive flow (export) in blue, negative flow (import) in red
-colors = ['#1f77b4' if val >= 0 else '#d62728' for val in df_flow_table["Total flow (MWh)"]]
-
-df_flow_table.plot(
-    kind='bar', 
-    y="Total flow (MWh)",   
-    ax=plt.gca(),           
-    color=colors,
-    legend=False          
-)
-
-plt.title("Total Gas Flow per Link (1 Year)", fontsize=14, fontweight='bold')
-plt.ylabel("Total Energy Transported (MWh_th)", fontsize=12)
-plt.xlabel("Links", fontsize=12)
-plt.xticks(rotation=45, ha='right')
-plt.grid(axis='y', linestyle='--', alpha=0.7)
-plt.tight_layout()
-plt.savefig(FILE_DIR / "graph/gas_flows.png", dpi=300, bbox_inches='tight')
-plt.show()
-# %%
+# %% The capacity of OCGT in each country
 # MW_th
 gas_capacity_SWE = network.links.at["OCGT_Sweden", "p_nom_opt"]
 gas_capacity_DKK= network.links.at["OCGT_Denmark", "p_nom_opt"]
@@ -182,10 +155,114 @@ print(f"Sweden OCGT electric output capacity: {elec_output_capacity_SWE:.2f} MW_
 print(f"Denmark OCGT electric output capacity: {elec_output_capacity_DKK:.2f} MW_el")
 print(f"Finland OCGT electric output capacity: {elec_output_capacity_FIN:.2f} MW_el")
 
-#%%
+#%% calculate the capacity factor of nuclear in Sweden
 nuclear_total_gen = network.generators_t.p["nuclear"].sum()
 nuclear_capacity = network.generators.at["nuclear", "p_nom_opt"]
 
 cf_nuclear = nuclear_total_gen / (nuclear_capacity * 8760)
 
 print(f"CF of nuclear in sweden: {cf_nuclear:.2%}")
+
+#%% get the gas pipline capacity
+target_links = ["Gas_Sweden_Norway", "Gas_Sweden_Finland", "Gas_Sweden_Denmark", "Gas_Norway_Denmark"]
+pipeline_results = {
+    "Pipeline Name": target_links,
+    "Optimal Capacity (MW_th)": [network.links.at[link, "p_nom_opt"] for link in target_links],
+    "Unit Capital Cost (€/MW)": [
+        network.links.at[link, "capital_cost"] 
+        for link in target_links
+    ]
+}
+
+df_pipelines = pd.DataFrame(pipeline_results)
+
+print("\n=== Optimized Gas Pipeline Capacities ===")
+print(df_pipelines)
+
+#%% plot total gas flow for a year
+#the total gas flow
+flow_data = {
+    "Sweden - Norway": network.links_t.p0["Gas_Sweden_Norway"].sum(),
+    "Sweden - Finland": network.links_t.p0["Gas_Sweden_Finland"].sum(),
+    "Sweden - Denmark": network.links_t.p0["Gas_Sweden_Denmark"].sum(),
+    "Norway - Denmark": network.links_t.p0["Gas_Norway_Denmark"].sum()
+}
+
+df_flow_table = pd.Series(flow_data, name="Total flow (MWh)")
+
+plt.figure(figsize=(10, 6))
+
+# positive flow (export) in blue, negative flow (import) in red
+colors = ['#1f77b4' if val >= 0 else '#d62728' for val in df_flow_table.values]
+
+df_flow_table.plot(
+    kind='bar', 
+    ax=plt.gca(),           
+    color=colors
+)
+
+plt.title("Total Gas Flow per Link in 2015", fontsize=14, fontweight='bold')
+plt.ylabel("Total Energy Transported (MWh_th)", fontsize=12)
+plt.xlabel("Links", fontsize=12)
+plt.xticks(rotation=45, ha='right')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.tight_layout()
+plt.savefig(FILE_DIR / "graph/gas_flows.png", dpi=300, bbox_inches='tight')
+plt.show()
+
+#%% plot the generation profile for the first four days
+time_index = network.loads_t.p.index[0:96]
+
+#source side
+onshore=network.generators_t.p['onshorewind'][0:96]
+solar=network.generators_t.p['solar'][0:96]
+gas=network.links_t.p0['OCGT_Sweden'][0:96] * 0.39
+nuclear=network.generators_t.p['nuclear'][0:96]
+norway = network.lines_t.p1['Sweden - Norway'][0:96].clip(lower=0) #export from Swedan turn into zero
+finland = network.lines_t.p1['Sweden - Finland'][0:96].clip(lower=0)
+denmark = network.lines_t.p1['Sweden - Denmark'][0:96].clip(lower=0)
+import_electricity = norway + finland + denmark
+storage_discharge=network.storage_units_t.p['SE storage'][0:96].clip(lower=0) #only consider discharge from storage
+
+source=[onshore, solar, gas, nuclear, import_electricity, storage_discharge]
+labels = ['Onshore Wind', 'Solar', 'Gas (OCGT)', 'Nuclear', 'Import Electricity', 'Storage_Discharge']
+colors = [
+    "#4E79A7",  # blue
+    "#F28E2B",  # orange
+    "#59A14F",  # green
+    "#76B7B2",   # teal
+    "#B07AA1",  # purple
+    "#EDC948",   # mustard yellow
+   # "#E15759",  # red
+   
+]
+#demand side
+storage_charge = -network.storage_units_t.p['SE storage'][0:96].clip(upper=0) #consider charge from storage, turn into positive value
+norway_ex = network.lines_t.p0['Sweden - Norway'][0:96].clip(lower=0) 
+finland_ex = network.lines_t.p0['Sweden - Finland'][0:96].clip(lower=0)
+denmark_ex = network.lines_t.p0['Sweden - Denmark'][0:96].clip(lower=0)
+export_electricity=norway_ex + finland_ex + denmark_ex
+curve_demand = network.loads_t.p['load'][0:96]
+curve_demand_plus_export = curve_demand + export_electricity
+curve_total_sink = curve_demand_plus_export + storage_charge
+
+plt.figure(figsize=(12, 6))
+plt.stackplot(time_index, source, labels=labels, colors=colors)
+plt.plot(time_index, curve_demand, 
+         color='black', linewidth=2.5, linestyle='--', zorder=5, 
+         label='Demand (Sweden)')
+
+plt.plot(time_index, curve_total_sink, 
+         color='#8B0000', linewidth=2.5, linestyle='--', zorder=5, 
+         label='Demand + Export + Charge')
+
+
+plt.xlabel('Time (Day/hours)')
+plt.ylabel('Power (MWh)')
+plt.title('Generation and Import Profiles (First 4 days of January)')
+plt.legend(loc='upper left')
+plt.tight_layout()
+plt.savefig(FILE_DIR /'graph/sweden_time_series_gas_network.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+# %%

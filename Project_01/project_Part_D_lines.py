@@ -5,6 +5,7 @@ import pypsa
 import matplotlib.pyplot as plt
 from pathlib import Path
 import numpy as np
+import networkx as nx
 #impoert network, swedan case consider storage unit 
 FILE_DIR = Path(__file__).parent
 model_dir = FILE_DIR / 'sweden_storage_model.nc' 
@@ -46,7 +47,6 @@ network.add("Load",
             "load_finland",
             bus="Finland",
             p_set=df_elec[finland].values)
-network.loads_t.p_set 
 
 #===Transmission line data====
 lengths = {
@@ -185,7 +185,7 @@ network.sanitize()
 network.optimize(solver_name='gurobi')
 
 #===Save the network to a NetCDF file===
-network.export_to_netcdf("sweden_network_model.nc")
+network.export_to_netcdf(FILE_DIR /"sweden_network_model.nc")
 
 #====print results====
 print(f'Total Annualized System Cost: {network.objective/1000000:.2f} m€')
@@ -348,8 +348,7 @@ print(np.round(PTDF, 4))
 
 calculated_flows = PTDF @ injections_array
 print("Calculated power flow on each line:\n", np.round(calculated_flows.flatten(), 2))
-#%%
-# 1. 提取每小時實際流量 
+#%% plot flow on lines 
 actual_flow_Nor = network.lines_t.p0['Sweden - Norway']
 actual_flow_Fin= network.lines_t.p0['Sweden - Finland']
 actual_flow_DK = network.lines_t.p0['Sweden - Denmark']
@@ -368,4 +367,5 @@ plt.legend()
 plt.tight_layout()
 plt.savefig(FILE_DIR / "graph/sweden_import_congestion.png", dpi=300, bbox_inches='tight')
 plt.show()
-# %%
+# %% plot network 
+

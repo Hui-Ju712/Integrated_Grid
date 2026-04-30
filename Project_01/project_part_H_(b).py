@@ -1,9 +1,11 @@
 import pypsa
 import pandas as pd
+from pathlib import Path
+FILE_DIR = Path(__file__).parent
 
 co2_price = 75  # €/tCO2
 
-network = pypsa.Network("sweden_gas_modelA.nc")
+network = pypsa.Network(FILE_DIR /"sweden_gas_model.nc")
 
 gas_bus_names = [b for b in network.buses.index if "Gas_" in b]
 
@@ -52,4 +54,4 @@ network.carriers.drop(["gas_fuel", "gas_transport"], errors="ignore", inplace=Tr
 network.global_constraints.drop("CO2Limit", errors="ignore", inplace=True)
 
 print(network.carriers)
-network.export_to_netcdf("sweden_priceconstraint_model.nc")
+network.export_to_netcdf(FILE_DIR /"sweden_priceconstraint_model.nc")
