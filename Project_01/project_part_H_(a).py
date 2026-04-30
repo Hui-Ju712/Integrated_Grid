@@ -10,9 +10,23 @@ for limit in co2_limits:
 
     network = pypsa.Network("sweden_gas_model.nc")
 
+    gas_bus_names = [b for b in network.buses.index if "Gas_" in b]
+
+    for link in network.links.index:
+        bus0 = network.links.at[link, "bus0"]
+        bus1 = network.links.at[link, "bus1"]
+        
+        if bus0 in gas_bus_names and bus1 in gas_bus_names:
+            network.links.at[link, "carrier"] = "gas_transport"
+        else:
+            network.links.at[link, "carrier"] = "gas_fuel"
+
     # set emissions
     network.carriers.loc["gas_fuel", "co2_emissions"] = 0.2
     network.carriers.loc["gas_transport", "co2_emissions"] = 0
+
+
+    network.generators.loc["Gas_source_Norway", "carrier"] = "gas_fuel"
 
     # add constraint
     network.add("GlobalConstraint",
@@ -22,10 +36,8 @@ for limit in co2_limits:
                 sense="<=",
                 constant=limit)
 
-    # solve
     network.optimize(solver_name="highs")
 
-    # store results
     results.append({
         "co2_limit": limit,
         "system_cost": network.objective,
@@ -35,6 +47,28 @@ for limit in co2_limits:
         "solar": network.generators.p_nom_opt.get("solar", 0),
         "nuclear": network.generators.p_nom_opt.get("nuclear", 0)
     })
+total_emissions = (
+    network.generators_t.p["Gas_source_Norway"].sum()
+    * 0.2
+)
+for limit in limits:
+    print(f"Limit: {limit}, Emissions: {total_emissions}")
+# === revert carriers back to original ===
+
+for link in network.links.index:
+    if network.links.at[link, "carrier"] in ["gas_fuel", "gas_transport"]:
+        network.links.at[link, "carrier"] = "gas"
+
+# revert generator carrier
+if "Gas_source_Norway" in network.generators.index:
+    network.generators.at["Gas_source_Norway", "carrier"] = "gas"
+
+# optional cleanup
+network.carriers.drop(["gas_fuel", "gas_transport"], errors="ignore", inplace=True)
+network.global_constraints.drop("CO2Limit", errors="ignore", inplace=True)
+
+print(network.carriers)
+
 network.export_to_netcdf("sweden_varyconstraint_model.nc")
 
 df_results = pd.DataFrame(results)
@@ -76,3 +110,4 @@ plt.legend()
 plt.gca().invert_xaxis()
 plt.grid()
 plt.show()
+print(network.generators.p_nom_opt)

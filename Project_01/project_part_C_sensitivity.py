@@ -1,19 +1,19 @@
 import pypsa
 import numpy as np
 import matplotlib.pyplot as plt
-from project_part_C import FILE_DIR, costs, capital_cost_storage_3
-
-REDUCTIONS  = [0.00, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80]
+from project_part_C import FILE_DIR, costs, capital_cost_storage
+            #   1.    2.    4.     8.     16.    32.
+REDUCTIONS  = [0.00, 0.25, 0.50, 0.75, 0.80, 0.85, 0.90]
 TECHS       = ['onshorewind', 'offshorewind', 'solar', 'nuclear', 'OCGT', 'SE storage']
 LABELS      = ['Onshore Wind', 'Offshore Wind', 'Solar', 'Nuclear', 'Gas (OCGT)', 'Battery Storage']
-COLORS      = ['blue', 'green', 'orange', 'purple', 'brown', 'red']
+COLORS      = ['blue', 'green', 'orange', 'purple', 'brown', 'green']
 
 def run_scenario(reduction):
     net = pypsa.Network(FILE_DIR / 'sweden_base_model.nc')
     if "battery" not in net.carriers.index:
         net.add("Carrier", "battery", co2_emissions=0)
     net.add("StorageUnit", "SE storage", bus="electricity bus", carrier="battery storage",
-            max_hours=2, capital_cost=capital_cost_storage_3 * (1 - reduction),
+            max_hours=2, capital_cost=capital_cost_storage * (1 - reduction),
             efficiency_store=costs.at["battery inverter", "efficiency"],
             efficiency_dispatch=costs.at["battery inverter", "efficiency"],
             p_nom_extendable=True, cyclic_state_of_charge=True)

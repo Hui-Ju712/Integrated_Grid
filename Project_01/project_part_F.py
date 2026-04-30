@@ -4,13 +4,13 @@ import pandas as pd
 import pypsa
 import matplotlib.pyplot as plt
 
-from project_part_C import FILE_DIR, costs, capital_cost_storage_3, cost_reduction
+from project_part_C import FILE_DIR
 
 # CO2 limits to sweep [tonnes/year]
-co2_limits = [0.1e6, 0.5e6, 1e6, 2e6, 5e6, 10e6, 20e6, 40e6]
+co2_limits = [0.25e6, 0.5e6, 1e6, 2e6, 4e6, 8e6, 16e6, 32e6]
 
 tech_labels = ["Onshore Wind", "Offshore Wind", "Solar PV", "Nuclear", "Gas (OCGT)", "Battery"]
-tech_colors = ["#4C9BE8", "#1A5FA8", "#F5A623", "#9B59B6", "#C0392B", "#2ECC71"]
+tech_colors = ["#4C9BE8", "#1A5FA8", "#F5A623", "#9B59B6", "#A52A2A", "#2ECC71"]
 cap_cols    = ["cap_onshore", "cap_offshore", "cap_solar", "cap_nuclear", "cap_ocgt", "cap_battery"]
 
 results = []

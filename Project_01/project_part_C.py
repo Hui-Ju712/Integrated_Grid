@@ -97,7 +97,7 @@ def my_autopct(pct):
 
 # --- Energy Mix Pie Chart ---
 labels = ["onshore wind", "offshore wind", "solar", "nuclear", "gas (OCGT)", "battery storage"]
-colors = ["blue", "green", "orange", "purple", "brown", "red"]
+colors = ["blue", "green", "orange", "purple", "brown", "green"]
 
 sizes = [
     network.generators_t.p["onshorewind"].sum(),
@@ -128,11 +128,23 @@ storage_caps = network.storage_units.groupby("carrier")["p_nom_opt"].sum()
 all_caps = pd.concat([gen_caps, storage_caps])
 all_caps = all_caps[all_caps > 0]  # Drop zero-capacity entries
 
+# Custom color mapping
+color_map = {
+    "onshorewind": "#0000FF",    # pure blue
+    "offshorewind": "#87CEEB",   # light blue
+    "solar": "#FF8C00",      # orange
+    "nuclear": "#800080",    # purple
+    "gas": "#A52A2A",        # brown
+    "battery storage": "#228B22",    # green
+}
+colors = [color_map.get(carrier, "#999999") for carrier in all_caps.index]
+
 fig, ax = plt.subplots()
 patches, texts, autotexts = ax.pie(
     all_caps.values,
     labels=all_caps.index,
     autopct=my_autopct,
+    colors=colors,
     textprops={"color": "white", "weight": "bold"},
 )
 ax.axis("equal")
