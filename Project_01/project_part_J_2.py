@@ -1,3 +1,4 @@
+#%% 
 from pyexpat import model
 import pandas as pd
 import pypsa
@@ -6,9 +7,11 @@ from pathlib import Path
 import numpy as np
 '''the nc. model may be changed'''
 FILE_DIR = Path(__file__).parent
-model_dir = FILE_DIR / 'sweden_priceconstraint_model.nc' 
+model_dir = FILE_DIR / 'nordics_gas_transport_model.nc' 
 network = pypsa.Network(model_dir)
 
+network.optimize(solver_name='gurobi')
+#%%
 def annuity(n, r):
     """ Calculate the annuity factor for an asset with lifetime n years and
     discount rate  r """
@@ -32,6 +35,8 @@ cost_multipliers = [1.0, 0.8, 0.6, 0.4]
 scenario_names = ["100% (Base)", "80% Cost", "60% Cost", "40% Cost"]
 sensitivity_results = {}
 generation_profile_results = {}
+
+'''problem for the base case!!!'''
 
 for mult, name in zip(cost_multipliers, scenario_names):
     # a. new capital_cost
