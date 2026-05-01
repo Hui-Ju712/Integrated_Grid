@@ -35,7 +35,7 @@ with open(cap_path, "w") as f:
         f.write(f"{label:<12}" + "".join(f"{v:>18,.1f}" for v in row) + "\n")
 
 # Plot
-fig, ax = plt.subplots(figsize=(16, 8))
+fig, ax = plt.subplots(figsize=(18, 8))
 bottoms = np.zeros(len(scenario_labels))
 x = np.arange(len(scenario_labels))
 
@@ -45,14 +45,13 @@ for i, (label, color) in enumerate(zip(LABELS, COLORS)):
         val = data[j, i]
         if val > 0:
             ax.text(x[j], bottoms[j] + val / 2, f"{val:,.0f}",
-                    ha='center', va='center', fontsize=7, color='black', fontweight='bold')
+                    ha='center', va='center', fontsize=11, color='black', fontweight='bold')
     bottoms += data[:, i]
 
 ax.set_xticks(x)
 ax.set_xticklabels(scenario_labels, fontsize=10)
 ax.set_xlabel('Battery Storage Cost Reduction', fontsize=12)
 ax.set_ylabel('Installed Capacity (MW)', fontsize=12)
-ax.set_title('Sensitivity Analysis – Installed Capacity per Scenario', fontsize=13, fontweight='bold')
 ax.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=10)
 ax.yaxis.grid(True, linestyle='--', alpha=0.5)
 ax.set_axisbelow(True)

@@ -153,3 +153,31 @@ ax.legend(patches, all_caps.index, loc="center left", bbox_to_anchor=(1, 0.5))
 fig.tight_layout()
 fig.savefig(FILE_DIR / "graph/sweden_storage_capacity_mix.png", dpi=300, bbox_inches="tight")
 plt.show()
+
+# --- State of Charge + Dispatch over a summer week ---
+week = slice("2015-07-03", "2015-07-10")
+idx = network.generators_t.p.loc[week].index
+
+fig, ax1 = plt.subplots(figsize=(12, 4))
+ax1.stackplot(
+    idx,
+    [network.generators_t.p.loc[week, g] for g in network.generators_t.p.columns],
+    labels=network.generators_t.p.columns,
+    alpha=0.7,
+)
+ax1.plot(idx, network.loads_t.p_set.loc[week].values, color="black", linewidth=1.5, label="Load")
+ax1.set_ylabel("Power [MW]")
+ax1.legend(loc="upper left", fontsize=7)
+
+ax2 = ax1.twinx()
+soc = network.storage_units_t.state_of_charge.loc[week, "SE storage"]
+ax2.fill_between(idx, 0, soc, color="red", alpha=0.3, label="Battery SoC")
+ax2.set_ylim(ax1.get_ylim())
+ax2.set_ylabel("State of Charge [MWh]", color="red")
+ax2.tick_params(axis="y", labelcolor="red")
+ax2.legend(loc="upper right", fontsize=7)
+
+#ax1.set_title("Energy Dispatch and Battery State of Charge – Summer Week")
+fig.tight_layout()
+fig.savefig(FILE_DIR / "graph/summer_week_dispatch.png", dpi=300, bbox_inches="tight")
+plt.show()
