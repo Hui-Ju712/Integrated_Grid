@@ -155,7 +155,7 @@ network.add("Generator",
             marginal_cost=marginal_cost_OCGT)
 
 # Save the network to a NetCDF file
-network.export_to_netcdf("sweden_base_model.nc")
+network.export_to_netcdf(FILE_DIR /"sweden_base_model.nc")
 
 
 # %%
@@ -204,22 +204,17 @@ plt.savefig(FILE_DIR / "graph/sweden_base_time_series.png", dpi=300, bbox_inches
 plt.tight_layout()
 
 # %%
+def my_autopct(pct):
+    return f'{pct:.1f}%'
+
+plt.figure(figsize=(8, 6))
 labels = ['onshore wind',
-          'offshore wind',
           'solar',
-          'nuclear',
           'gas (OCGT)']
 sizes = [network.generators_t.p['onshorewind'].sum(),
-         network.generators_t.p['offshorewind'].sum(),
          network.generators_t.p['solar'].sum(),
-         network.generators_t.p['nuclear'].sum(),
          network.generators_t.p['OCGT'].sum()]
-colors = ['blue', 'green', 'orange', 'purple', 'brown']
-
-
-def my_autopct(pct):
-    # Only show the text if the percentage is greater than 0%
-    return f'{pct:.1f}%' if pct > 0 else ''
+colors = ['blue', 'orange', 'brown']
 
 
 patches, texts, autotexts = plt.pie(
@@ -232,70 +227,78 @@ patches, texts, autotexts = plt.pie(
 )
 
 plt.axis('equal')
-plt.title('Electricity mix', y=1.07)
-plt.legend(patches, labels, loc="center left", bbox_to_anchor=(1, 0.5))
+#plt.title('Electricity mix', y=1.07)
+plt.legend(patches, labels)
 plt.savefig(FILE_DIR / "graph/sweden_base_energy_mix.png", dpi=300, bbox_inches='tight')
 plt.show()
 
-# %%
-'''This is part 2 of the project, we can fix problem later'''
-
-# co2_limit=1000000 #tonCO2
-# network.add("GlobalConstraint",
-#             "co2_limit",
-#             type="primary_energy",
-#             carrier_attribute="co2_emissions",
-#             sense="<=",
-#             constant=co2_limit)
-# network.optimize(solver_name='gurobi')
-
-
-# network.generators.p_nom_opt #in MW
-
-# #plot the generation and demand profiles for the first 4 days in January (96 hours)
-# plt.plot(network.loads_t.p['load'][0:96], color='black', label='demand')
-# plt.plot(network.generators_t.p['onshorewind'][0:96], color='blue', label='onshore wind')
-# plt.plot(network.generators_t.p['offshorewind'][0:96], color='green', label='offshore wind')
-# plt.plot(network.generators_t.p['solar'][0:96], color='orange', label='solar')
-# plt.plot(network.generators_t.p['nuclear'][0:96], color='purple', label='nuclear')
-# plt.plot(network.generators_t.p['OCGT'][0:96], color='brown', label='gas (OCGT)')
-# plt.legend(fancybox=True, shadow=True, loc='best')
-
-# #plot the generation mix
-# labels = ['onshore wind', 'offshore wind', 'solar', 'nuclear', 'gas (OCGT)' ]
-# sizes = [network.generators_t.p['onshorewind'].sum(),
-#          network.generators_t.p['offshorewind'].sum(),
-#          network.generators_t.p['solar'].sum(),
-#          network.generators_t.p['nuclear'].sum(),
-#          network.generators_t.p['OCGT'].sum()]
-
-# colors = ['blue', 'green', 'orange', 'purple', 'brown']
-
-# plt.pie(sizes,
-#         colors=colors,
-#         labels=labels,
-#         wedgeprops={'linewidth':0})
-# plt.axis('equal')
-
-# plt.title('Electricity mix', y=1.07)
-
-
-# %% [markdown]
-# ## Part A
-
-# choose a different country/region/city/system and calculate the optimal capacities for renewable and non-renewable generators. 
-# You can add as many technologies as you want. Remember to provide a reference for the cost assumptions. Plot the dispatch time series for a week in summer and winter. Plot the annual electricity mix. Use the duration curves or the capacity factor to investigate the contribution of different technologies.
-
+# %%Part A
 # %%
 # Winter week and summer week
 
-def plot_dispatch_week(network, start_date, end_date, title):
+# def plot_dispatch_week(network, start_date, end_date, title):
+#     dispatch = network.generators_t.p.loc[start_date:end_date, [
+#         "onshorewind", "offshorewind", "solar", "nuclear", "OCGT"]]
+#     demand = network.loads_t.p.loc[start_date:end_date, "load"]
+
+#     # Get which technologies actually have non-zero generation
+#     active_techs = dispatch.columns[dispatch.sum() > 0]
+#     tech_labels = {
+#         "onshorewind": "onshore wind",
+#         "offshorewind": "offshore wind",
+#         "solar": "solar",
+#         "nuclear": "nuclear",
+#         "OCGT": "gas (OCGT)"
+#     }
+
+#     plt.figure(figsize=(14, 5))
+#     plt.plot(demand.index, demand, color="black", linewidth=2, label="demand")
+#     plt.stackplot(dispatch.index,
+#                   *[dispatch[t] for t in active_techs],
+#                   labels=[tech_labels[t] for t in active_techs],
+#                   alpha=0.85)
+#     plt.title(title)
+#     plt.ylabel("Power [MW]")
+#     plt.legend(loc="upper left", ncol=3)
+#     plt.tight_layout()
+
+#     out_path = FILE_DIR / "graph" / "sensitivity_battery_cost.png"
+#     out_path.parent.mkdir(parents=True, exist_ok=True)
+#     plt.savefig(out_path, dpi=300, bbox_inches='tight')
+#     plt.show()
+
+
+# plot_dispatch_week(network,
+#                    "2015-01-02 00:00:00",
+#                    "2015-01-08 23:00:00",
+#                    "Dispatch - Winter week")
+# plot_dispatch_week(network,
+#                    "2015-07-03 00:00:00",
+#                    "2015-07-09 23:00:00",
+#                    "Dispatch - Summer week")
+
+#%% Part A: plotting adding CF
+# Extract CF data as before
+CF_wind = df_onshorewind[country][[hour.strftime("%Y-%m-%dT%H:%M:%SZ") for hour in network.snapshots]]
+CF_solar = df_solar[country][[hour.strftime("%Y-%m-%dT%H:%M:%SZ") for hour in network.snapshots]]
+
+# Convert it into a clean pandas Series with the network's DatetimeIndex
+cf_wind_ts = pd.Series(CF_wind.values.squeeze(), index=network.snapshots)
+cf_solar_ts = pd.Series(CF_solar.values.squeeze(), index=network.snapshots)
+
+def plot_dispatch_week(network, start_date, end_date, title, cf_wind, cf_solar, filename):
+    # Slice the data
     dispatch = network.generators_t.p.loc[start_date:end_date, [
         "onshorewind", "offshorewind", "solar", "nuclear", "OCGT"]]
     demand = network.loads_t.p.loc[start_date:end_date, "load"]
+    
+    # Slice the CF data for both wind and solar
+    cf_wind_slice = cf_wind.loc[start_date:end_date] 
+    cf_solar_slice = cf_solar.loc[start_date:end_date] 
 
     # Get which technologies actually have non-zero generation
     active_techs = dispatch.columns[dispatch.sum() > 0]
+    
     tech_labels = {
         "onshorewind": "onshore wind",
         "offshorewind": "offshore wind",
@@ -304,31 +307,71 @@ def plot_dispatch_week(network, start_date, end_date, title):
         "OCGT": "gas (OCGT)"
     }
 
-    plt.figure(figsize=(14, 5))
-    plt.plot(demand.index, demand, color="black", linewidth=2, label="demand")
-    plt.stackplot(dispatch.index,
+    # 1. ADD A COLOR DICTIONARY HERE
+    tech_colors = {
+        "onshorewind": "lightblue",    # You can change these colors!
+        "offshorewind": "teal",
+        "solar": "orange",
+        "nuclear": "mediumpurple",
+        "OCGT": "brown"               # A nice brownish color for gas
+    }
+
+    # Use subplots to allow for a twin axis
+    fig, ax1 = plt.subplots(figsize=(14, 5))
+    
+    # --- Primary Y-Axis (Power in MW) ---
+    ax1.plot(demand.index, demand, color="black", linewidth=2, label="demand")
+    ax1.stackplot(dispatch.index,
                   *[dispatch[t] for t in active_techs],
                   labels=[tech_labels[t] for t in active_techs],
-                  alpha=0.85)
-    plt.title(title)
-    plt.ylabel("Power [MW]")
-    plt.legend(loc="upper left", ncol=3)
+                  colors=[tech_colors[t] for t in active_techs], # 2. ADD COLORS ARGUMENT HERE
+                  alpha=0.7) # 3. CHANGED ALPHA TO 0.8
+    
+    ax1.set_title(title)
+    ax1.set_ylabel("Power [MW]")
+    
+    # --- Secondary Y-Axis (Capacity Factors) ---
+    ax2 = ax1.twinx() 
+    # Plotting Wind CF (Dark Blue Dashed)
+    ax2.plot(cf_wind_slice.index, cf_wind_slice, color="darkblue", linestyle="--", linewidth=2, label="Wind CF")
+    # Plotting Solar CF (Dark Orange Dashed)
+    ax2.plot(cf_solar_slice.index, cf_solar_slice, color="darkorange", linestyle="--", linewidth=2, label="Solar CF")
+    
+    ax2.set_ylabel("Capacity Factor (p.u.)")
+    ax2.set_ylim(0, 1.05) # Keep CF between 0 and 1
+
+    # --- Combine Legends ---
+    lines_1, labels_1 = ax1.get_legend_handles_labels()
+    lines_2, labels_2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left", ncol=4)
+
     plt.tight_layout()
 
-    out_path = FILE_DIR / "graph" / "sensitivity_battery_cost.png"
+    # Save using the dynamic filename provided
+    out_path = FILE_DIR / "graph" / filename
     out_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out_path, dpi=300, bbox_inches='tight')
     plt.show()
 
+# --- Execute the Plotting ---
 
+# Plot Winter Week
 plot_dispatch_week(network,
                    "2015-01-02 00:00:00",
                    "2015-01-08 23:00:00",
-                   "Dispatch - Winter week")
+                   "Dispatch - Winter week",
+                   cf_wind_ts,     # <-- Wind CF
+                   cf_solar_ts,    # <-- Solar CF
+                   "Winter_week.png") # <-- Filename for winter
+
+# Plot Summer Week
 plot_dispatch_week(network,
                    "2015-07-03 00:00:00",
                    "2015-07-09 23:00:00",
-                   "Dispatch - Summer week")
+                   "Dispatch - Summer week",
+                   cf_wind_ts,     # <-- Wind CF
+                   cf_solar_ts,    # <-- Solar CF
+                   "Summer_week.png") # <-- Filename for summer
 
 # %%
 # Annual energy mix

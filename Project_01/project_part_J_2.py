@@ -61,7 +61,7 @@ time_index = network.loads_t.p.index[0:96]
 
 #source side
 onshore = network.generators_t.p['onshorewind'][0:96].fillna(0)
-
+solar = network.generators_t.p['solar'][0:96].fillna(0)
 gas = (network.links_t.p0['OCGT_Sweden'][0:96] * 0.39).fillna(0)
 nuclear = network.generators_t.p['nuclear'][0:96].fillna(0)
 
@@ -73,20 +73,20 @@ import_electricity = norway + finland + denmark
 #storage_discharge = network.storage_units_t.p['SE storage'][0:96].fillna(0).clip(lower=0).values
 
 
-source = [onshore, gas, nuclear, import_electricity]
-labels = ['Onshore Wind', 'Gas (OCGT)', 'Nuclear', 'Import Electricity']
+source = [onshore, solar, gas, nuclear, import_electricity]
+labels = ['Onshore Wind', 'Solar', 'Gas (OCGT)', 'Nuclear', 'Import Electricity']
 colors = [
     "#4E79A7",  # blue
     "#F28E2B",  # orange
     "#59A14F",  # green
     "#76B7B2",  # teal
-    # "#B07AA1",  # purple
+    "#B07AA1",  # purple
     # "#EDC948",  # mustard yellow
-    #"#E15759",  # red (紅色代表缺電危機)
 ]
 
 diagnostic_df = pd.DataFrame({
     'Onshore Wind': onshore,
+    'Solar': solar,
     'Gas (OCGT)': gas,
     'Nuclear': nuclear,
     'Import Electricity': import_electricity
@@ -112,6 +112,7 @@ import_dk_total = network.lines_t.p1['Sweden - Denmark'].clip(lower=0).sum()
 
 labels = [
     'Domestic Onshore Wind',
+    'Domestic Solar',
     'Domestic Gas (OCGT)',
     'Domestic Nuclear', 
     'Import from Norway',
@@ -120,6 +121,7 @@ labels = [
 ]
 sizes = [
     network.generators_t.p['onshorewind'].sum(),
+    network.generators_t.p['solar'].sum(),
     elec_output_capacity_SWE,
     network.generators_t.p['nuclear'].sum(),
     import_no_total,
@@ -131,9 +133,10 @@ colors = [
     "#4E79A7",  # blue
     "#F28E2B",  # orange
     "#59A14F",  # green
+    "#76B7B2",  # teal
     "#EDC948",   # mustard yellow
-    "#B07AA1",  # purple
     "#76B7B2",   # teal
+    "#FF9DA7",   # pink
     
 ]
         
