@@ -289,27 +289,35 @@ plt.show()
 # %%
 # Winter week and summer week
 
-
 def plot_dispatch_week(network, start_date, end_date, title):
     dispatch = network.generators_t.p.loc[start_date:end_date, [
         "onshorewind", "offshorewind", "solar", "nuclear", "OCGT"]]
     demand = network.loads_t.p.loc[start_date:end_date, "load"]
 
+    # Get which technologies actually have non-zero generation
+    active_techs = dispatch.columns[dispatch.sum() > 0]
+    tech_labels = {
+        "onshorewind": "onshore wind",
+        "offshorewind": "offshore wind",
+        "solar": "solar",
+        "nuclear": "nuclear",
+        "OCGT": "gas (OCGT)"
+    }
+
     plt.figure(figsize=(14, 5))
     plt.plot(demand.index, demand, color="black", linewidth=2, label="demand")
     plt.stackplot(dispatch.index,
-                  dispatch["onshorewind"],
-                  dispatch["offshorewind"],
-                  dispatch["solar"],
-                  dispatch["nuclear"],
-                  dispatch["OCGT"],
-                  labels=["onshore wind", "offshore wind",
-                          "solar", "nuclear", "gas (OCGT)"],
+                  *[dispatch[t] for t in active_techs],
+                  labels=[tech_labels[t] for t in active_techs],
                   alpha=0.85)
     plt.title(title)
     plt.ylabel("Power [MW]")
     plt.legend(loc="upper left", ncol=3)
     plt.tight_layout()
+
+    out_path = FILE_DIR / "graph" / "sensitivity_battery_cost.png"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(out_path, dpi=300, bbox_inches='tight')
     plt.show()
 
 
